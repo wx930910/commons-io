@@ -19,41 +19,30 @@ package org.apache.commons.io.input;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.io.IOException;
-import java.io.InputStream;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class MarkShieldInputStreamTest {
 
 	@Test
-	public void markIsNoOpWhenUnderlyingSupports() throws IOException {
-		try (final MarkTestableInputStream in = new MarkTestableInputStream(new NullInputStream(64, true, false));
+	public void markIsNoOpWhenUnderlyingSupports() throws IOException, Exception {
+		try (final ProxyInputStream in = Mockito.mock(ProxyInputStream.class,
+				Mockito.withSettings().useConstructor(new NullInputStream(64, true, false))
+						.defaultAnswer(Mockito.CALLS_REAL_METHODS));
 				final MarkShieldInputStream msis = new MarkShieldInputStream(in)) {
 
 			msis.mark(1024);
+			int[] inReadlimit = new int[1];
+			Mockito.doAnswer((stubInvo) -> {
+				int readlimit = stubInvo.getArgument(0);
+				inReadlimit[0] = readlimit;
+				stubInvo.callRealMethod();
+				return null;
+			}).when(in).mark(Mockito.anyInt());
 
-			assertEquals(0, in.markcount);
-			assertEquals(0, in.readlimit);
-		}
-	}
-
-	private static class MarkTestableInputStream extends ProxyInputStream {
-		int markcount;
-		int readlimit;
-
-		public MarkTestableInputStream(final InputStream in) {
-			super(in);
-		}
-
-		@SuppressWarnings("sync-override")
-		@Override
-		public void mark(final int readlimit) {
-			// record that `mark` was called
-			markcount++;
-			this.readlimit = readlimit;
-
-			// invoke on super
-			super.mark(readlimit);
+			Mockito.verify(in, Mockito.times(0)).mark(Mockito.anyInt());
+			assertEquals(0, inReadlimit[0]);
 		}
 	}
 }
