@@ -16,36 +16,36 @@
  */
 package org.apache.commons.io.test;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
+
 import java.io.IOException;
 import java.io.Reader;
 
 import org.apache.commons.io.input.NullReader;
 import org.apache.commons.io.input.ProxyReader;
+import org.mockito.Mockito;
 
 /**
  * Helper class for checking behavior of IO classes.
  */
-public class ThrowOnCloseReader extends ProxyReader {
+public class ThrowOnCloseReader {
 
-    /**
-     * Default ctor.
-     */
-    @SuppressWarnings("resource")
-    public ThrowOnCloseReader() {
-        super(new NullReader());
-    }
+	public static ProxyReader mockProxyReader2(final Reader proxy) throws Exception {
+		ProxyReader mockInstance = mock(ProxyReader.class,
+				withSettings().useConstructor(proxy).defaultAnswer(Mockito.CALLS_REAL_METHODS));
+		doThrow(new IOException(mockInstance.getClass().getSimpleName() + ".close() called.")).when(mockInstance)
+				.close();
+		return mockInstance;
+	}
 
-    /**
-     * @param proxy Reader to delegate to.
-     */
-    public ThrowOnCloseReader(final Reader proxy) {
-        super(proxy);
-    }
-
-    /** @see java.io.Reader#close() */
-    @Override
-    public void close() throws IOException {
-        throw new IOException(getClass().getSimpleName() + ".close() called.");
-    }
+	public static ProxyReader mockProxyReader1() throws Exception {
+		ProxyReader mockInstance = mock(ProxyReader.class,
+				withSettings().useConstructor(new NullReader()).defaultAnswer(Mockito.CALLS_REAL_METHODS));
+		doThrow(new IOException(mockInstance.getClass().getSimpleName() + ".close() called.")).when(mockInstance)
+				.close();
+		return mockInstance;
+	}
 
 }

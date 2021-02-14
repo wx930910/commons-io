@@ -27,8 +27,8 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
 
+import org.apache.commons.io.output.ProxyOutputStream;
 import org.apache.commons.io.test.ThrowOnCloseInputStream;
 import org.apache.commons.io.test.ThrowOnCloseOutputStream;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,130 +37,132 @@ import org.junit.jupiter.api.Test;
 /**
  * JUnit Test Case for {@link TeeInputStream}.
  */
-public class TeeInputStreamTest  {
+public class TeeInputStreamTest {
 
-    private final String ASCII = "US-ASCII";
+	private final String ASCII = "US-ASCII";
 
-    private InputStream tee;
+	private InputStream tee;
 
-    private ByteArrayOutputStream output;
+	private ByteArrayOutputStream output;
 
-    @BeforeEach
-    public void setUp() throws Exception {
-        final InputStream input = new ByteArrayInputStream("abc".getBytes(ASCII));
-        output = new ByteArrayOutputStream();
-        tee = new TeeInputStream(input, output);
-    }
+	@BeforeEach
+	public void setUp() throws Exception {
+		final InputStream input = new ByteArrayInputStream("abc".getBytes(ASCII));
+		output = new ByteArrayOutputStream();
+		tee = new TeeInputStream(input, output);
+	}
 
-    @Test
-    public void testReadNothing() throws Exception {
-        assertEquals("", new String(output.toString(ASCII)));
-    }
+	@Test
+	public void testReadNothing() throws Exception {
+		assertEquals("", new String(output.toString(ASCII)));
+	}
 
-    @Test
-    public void testReadOneByte() throws Exception {
-        assertEquals('a', tee.read());
-        assertEquals("a", new String(output.toString(ASCII)));
-    }
+	@Test
+	public void testReadOneByte() throws Exception {
+		assertEquals('a', tee.read());
+		assertEquals("a", new String(output.toString(ASCII)));
+	}
 
-    @Test
-    public void testReadEverything() throws Exception {
-        assertEquals('a', tee.read());
-        assertEquals('b', tee.read());
-        assertEquals('c', tee.read());
-        assertEquals(-1, tee.read());
-        assertEquals("abc", new String(output.toString(ASCII)));
-    }
+	@Test
+	public void testReadEverything() throws Exception {
+		assertEquals('a', tee.read());
+		assertEquals('b', tee.read());
+		assertEquals('c', tee.read());
+		assertEquals(-1, tee.read());
+		assertEquals("abc", new String(output.toString(ASCII)));
+	}
 
-    @Test
-    public void testReadToArray() throws Exception {
-        final byte[] buffer = new byte[8];
-        assertEquals(3, tee.read(buffer));
-        assertEquals('a', buffer[0]);
-        assertEquals('b', buffer[1]);
-        assertEquals('c', buffer[2]);
-        assertEquals(-1, tee.read(buffer));
-        assertEquals("abc", new String(output.toString(ASCII)));
-    }
+	@Test
+	public void testReadToArray() throws Exception {
+		final byte[] buffer = new byte[8];
+		assertEquals(3, tee.read(buffer));
+		assertEquals('a', buffer[0]);
+		assertEquals('b', buffer[1]);
+		assertEquals('c', buffer[2]);
+		assertEquals(-1, tee.read(buffer));
+		assertEquals("abc", new String(output.toString(ASCII)));
+	}
 
-    @Test
-    public void testReadToArrayWithOffset() throws Exception {
-        final byte[] buffer = new byte[8];
-        assertEquals(3, tee.read(buffer, 4, 4));
-        assertEquals('a', buffer[4]);
-        assertEquals('b', buffer[5]);
-        assertEquals('c', buffer[6]);
-        assertEquals(-1, tee.read(buffer, 4, 4));
-        assertEquals("abc", new String(output.toString(ASCII)));
-    }
+	@Test
+	public void testReadToArrayWithOffset() throws Exception {
+		final byte[] buffer = new byte[8];
+		assertEquals(3, tee.read(buffer, 4, 4));
+		assertEquals('a', buffer[4]);
+		assertEquals('b', buffer[5]);
+		assertEquals('c', buffer[6]);
+		assertEquals(-1, tee.read(buffer, 4, 4));
+		assertEquals("abc", new String(output.toString(ASCII)));
+	}
 
-    @Test
-    public void testSkip() throws Exception {
-        assertEquals('a', tee.read());
-        assertEquals(1, tee.skip(1));
-        assertEquals('c', tee.read());
-        assertEquals(-1, tee.read());
-        assertEquals("ac", new String(output.toString(ASCII)));
-    }
+	@Test
+	public void testSkip() throws Exception {
+		assertEquals('a', tee.read());
+		assertEquals(1, tee.skip(1));
+		assertEquals('c', tee.read());
+		assertEquals(-1, tee.read());
+		assertEquals("ac", new String(output.toString(ASCII)));
+	}
 
-    @Test
-    public void testMarkReset() throws Exception {
-        assertEquals('a', tee.read());
-        tee.mark(1);
-        assertEquals('b', tee.read());
-        tee.reset();
-        assertEquals('b', tee.read());
-        assertEquals('c', tee.read());
-        assertEquals(-1, tee.read());
-        assertEquals("abbc", new String(output.toString(ASCII)));
-    }
+	@Test
+	public void testMarkReset() throws Exception {
+		assertEquals('a', tee.read());
+		tee.mark(1);
+		assertEquals('b', tee.read());
+		tee.reset();
+		assertEquals('b', tee.read());
+		assertEquals('c', tee.read());
+		assertEquals(-1, tee.read());
+		assertEquals("abbc", new String(output.toString(ASCII)));
+	}
 
-    /**
-     * Tests that the main {@code InputStream} is closed when closing the branch {@code OutputStream} throws an
-     * exception on {@link TeeInputStream#close()}, if specified to do so.
-     */
-    @Test
-    public void testCloseBranchIOException() throws Exception {
-        final ByteArrayInputStream goodIs = mock(ByteArrayInputStream.class);
-        final OutputStream badOs = new ThrowOnCloseOutputStream();
+	/**
+	 * Tests that the main {@code InputStream} is closed when closing the branch
+	 * {@code OutputStream} throws an exception on {@link TeeInputStream#close()},
+	 * if specified to do so.
+	 */
+	@Test
+	public void testCloseBranchIOException() throws Exception {
+		final ByteArrayInputStream goodIs = mock(ByteArrayInputStream.class);
+		final ProxyOutputStream badOs = ThrowOnCloseOutputStream.mockProxyOutputStream1();
 
-        final TeeInputStream nonClosingTis = new TeeInputStream(goodIs, badOs, false);
-        nonClosingTis.close();
-        verify(goodIs).close();
+		final TeeInputStream nonClosingTis = new TeeInputStream(goodIs, badOs, false);
+		nonClosingTis.close();
+		verify(goodIs).close();
 
-        final TeeInputStream closingTis = new TeeInputStream(goodIs, badOs, true);
-        try {
-            closingTis.close();
-            fail("Expected " + IOException.class.getName());
-        } catch (final IOException e) {
-            verify(goodIs, times(2)).close();
-        }
-    }
+		final TeeInputStream closingTis = new TeeInputStream(goodIs, badOs, true);
+		try {
+			closingTis.close();
+			fail("Expected " + IOException.class.getName());
+		} catch (final IOException e) {
+			verify(goodIs, times(2)).close();
+		}
+	}
 
-    /**
-     * Tests that the branch {@code OutputStream} is closed when closing the main {@code InputStream} throws an
-     * exception on {@link TeeInputStream#close()}, if specified to do so.
-     */
-    @Test
-    public void testCloseMainIOException() throws IOException {
-        final InputStream badIs = new ThrowOnCloseInputStream();
-        final ByteArrayOutputStream goodOs = mock(ByteArrayOutputStream.class);
+	/**
+	 * Tests that the branch {@code OutputStream} is closed when closing the main
+	 * {@code InputStream} throws an exception on {@link TeeInputStream#close()}, if
+	 * specified to do so.
+	 */
+	@Test
+	public void testCloseMainIOException() throws IOException {
+		final InputStream badIs = new ThrowOnCloseInputStream();
+		final ByteArrayOutputStream goodOs = mock(ByteArrayOutputStream.class);
 
-        final TeeInputStream nonClosingTis = new TeeInputStream(badIs, goodOs, false);
-        try {
-            nonClosingTis.close();
-            fail("Expected " + IOException.class.getName());
-        } catch (final IOException e) {
-            verify(goodOs, never()).close();
-        }
+		final TeeInputStream nonClosingTis = new TeeInputStream(badIs, goodOs, false);
+		try {
+			nonClosingTis.close();
+			fail("Expected " + IOException.class.getName());
+		} catch (final IOException e) {
+			verify(goodOs, never()).close();
+		}
 
-        final TeeInputStream closingTis = new TeeInputStream(badIs, goodOs, true);
-        try {
-            closingTis.close();
-            fail("Expected " + IOException.class.getName());
-        } catch (final IOException e) {
-            verify(goodOs).close();
-        }
-    }
+		final TeeInputStream closingTis = new TeeInputStream(badIs, goodOs, true);
+		try {
+			closingTis.close();
+			fail("Expected " + IOException.class.getName());
+		} catch (final IOException e) {
+			verify(goodOs).close();
+		}
+	}
 
 }

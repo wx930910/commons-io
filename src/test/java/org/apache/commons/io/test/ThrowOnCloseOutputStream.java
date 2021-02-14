@@ -16,8 +16,10 @@
  */
 package org.apache.commons.io.test;
 
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
+
 import java.io.IOException;
-import java.io.OutputStream;
 
 import org.apache.commons.io.output.NullOutputStream;
 import org.apache.commons.io.output.ProxyOutputStream;
@@ -25,26 +27,13 @@ import org.apache.commons.io.output.ProxyOutputStream;
 /**
  * Helper class for checking behavior of IO classes.
  */
-public class ThrowOnCloseOutputStream extends ProxyOutputStream {
+public class ThrowOnCloseOutputStream {
 
-    /**
-     * Default ctor.
-     */
-    public ThrowOnCloseOutputStream() {
-        super(NullOutputStream.NULL_OUTPUT_STREAM);
-    }
-
-    /**
-     * @param proxy OutputStream to delegate to.
-     */
-    public ThrowOnCloseOutputStream(final OutputStream proxy) {
-        super(proxy);
-    }
-
-    /** @see java.io.OutputStream#close() */
-    @Override
-    public void close() throws IOException {
-        throw new IOException(getClass().getSimpleName() + ".close() called.");
-    }
+	public static ProxyOutputStream mockProxyOutputStream1() throws Exception {
+		ProxyOutputStream mockInstance = spy(new ProxyOutputStream(NullOutputStream.NULL_OUTPUT_STREAM));
+		doThrow(new IOException(mockInstance.getClass().getSimpleName() + ".close() called.")).when(mockInstance)
+				.close();
+		return mockInstance;
+	}
 
 }

@@ -20,97 +20,100 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.withSettings;
 
 import java.io.IOException;
 import java.io.InputStream;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 public class MarkShieldInputStreamTest {
 
-    @Test
-    public void markIsNoOpWhenUnderlyingDoesNotSupport() throws IOException {
-        try (final MarkTestableInputStream in = new MarkTestableInputStream(new NullInputStream(64, false, false));
-             final MarkShieldInputStream msis = new MarkShieldInputStream(in)) {
+	@Test
+	public void markIsNoOpWhenUnderlyingDoesNotSupport() throws IOException {
+		try (final ProxyInputStream in = mock(ProxyInputStream.class,
+				withSettings().useConstructor(new NullInputStream(64, false, false))
+						.defaultAnswer(Mockito.CALLS_REAL_METHODS));
+				final MarkShieldInputStream msis = new MarkShieldInputStream(in)) {
 
-            msis.mark(1024);
+			msis.mark(1024);
+			int[] inReadlimit = new int[1];
+			doAnswer((stubInvo) -> {
+				int readlimit = stubInvo.getArgument(0);
+				inReadlimit[0] = readlimit;
+				stubInvo.callRealMethod();
+				return null;
+			}).when(in).mark(anyInt());
 
-            assertEquals(0, in.markcount);
-            assertEquals(0, in.readlimit);
-        }
-    }
+			verify(in, times(0)).mark(anyInt());
+			assertEquals(0, inReadlimit[0]);
+		}
+	}
 
-    @Test
-    public void markIsNoOpWhenUnderlyingSupports() throws IOException {
-        try (final MarkTestableInputStream in = new MarkTestableInputStream(new NullInputStream(64, true, false));
-             final MarkShieldInputStream msis = new MarkShieldInputStream(in)) {
+	@Test
+	public void markIsNoOpWhenUnderlyingSupports() throws IOException {
+		try (final ProxyInputStream in = mock(ProxyInputStream.class,
+				withSettings().useConstructor(new NullInputStream(64, true, false))
+						.defaultAnswer(Mockito.CALLS_REAL_METHODS));
+				final MarkShieldInputStream msis = new MarkShieldInputStream(in)) {
 
-            msis.mark(1024);
+			msis.mark(1024);
+			int[] inReadlimit = new int[1];
+			doAnswer((stubInvo) -> {
+				int readlimit = stubInvo.getArgument(0);
+				inReadlimit[0] = readlimit;
+				stubInvo.callRealMethod();
+				return null;
+			}).when(in).mark(anyInt());
 
-            assertEquals(0, in.markcount);
-            assertEquals(0, in.readlimit);
-        }
-    }
+			verify(in, times(0)).mark(anyInt());
+			assertEquals(0, inReadlimit[0]);
+		}
+	}
 
-    @Test
-    public void markSupportedIsFalseWhenUnderlyingFalse() throws IOException {
-        // test wrapping an underlying stream which does NOT support marking
-        try (final InputStream is = new NullInputStream(64, false, false)) {
-            assertFalse(is.markSupported());
+	@Test
+	public void markSupportedIsFalseWhenUnderlyingFalse() throws IOException {
+		// test wrapping an underlying stream which does NOT support marking
+		try (final InputStream is = new NullInputStream(64, false, false)) {
+			assertFalse(is.markSupported());
 
-            try (final MarkShieldInputStream msis = new MarkShieldInputStream(is)) {
-                assertFalse(msis.markSupported());
-            }
-        }
-    }
+			try (final MarkShieldInputStream msis = new MarkShieldInputStream(is)) {
+				assertFalse(msis.markSupported());
+			}
+		}
+	}
 
-    @Test
-    public void markSupportedIsFalseWhenUnderlyingTrue() throws IOException {
-        // test wrapping an underlying stream which supports marking
-        try (final InputStream is = new NullInputStream(64, true, false)) {
-            assertTrue(is.markSupported());
+	@Test
+	public void markSupportedIsFalseWhenUnderlyingTrue() throws IOException {
+		// test wrapping an underlying stream which supports marking
+		try (final InputStream is = new NullInputStream(64, true, false)) {
+			assertTrue(is.markSupported());
 
-            try (final MarkShieldInputStream msis = new MarkShieldInputStream(is)) {
-                assertFalse(msis.markSupported());
-            }
-        }
-    }
+			try (final MarkShieldInputStream msis = new MarkShieldInputStream(is)) {
+				assertFalse(msis.markSupported());
+			}
+		}
+	}
 
-    @Test
-    public void resetThrowsExceptionWhenUnderylingDoesNotSupport() throws IOException {
-        // test wrapping an underlying stream which does NOT support marking
-        try (final MarkShieldInputStream msis = new MarkShieldInputStream(
-                new NullInputStream(64, false, false))) {
-            assertThrows(UnsupportedOperationException.class, () -> msis.reset());
-        }
-    }
+	@Test
+	public void resetThrowsExceptionWhenUnderylingDoesNotSupport() throws IOException {
+		// test wrapping an underlying stream which does NOT support marking
+		try (final MarkShieldInputStream msis = new MarkShieldInputStream(new NullInputStream(64, false, false))) {
+			assertThrows(UnsupportedOperationException.class, () -> msis.reset());
+		}
+	}
 
-    @Test
-    public void resetThrowsExceptionWhenUnderylingSupports() throws IOException {
-        // test wrapping an underlying stream which supports marking
-        try (final MarkShieldInputStream msis = new MarkShieldInputStream(
-                new NullInputStream(64, true, false))) {
-            assertThrows(UnsupportedOperationException.class, () -> msis.reset());
-        }
-    }
-
-    private static class MarkTestableInputStream extends ProxyInputStream {
-        int markcount;
-        int readlimit;
-
-        public MarkTestableInputStream(final InputStream in) {
-            super(in);
-        }
-
-        @SuppressWarnings("sync-override")
-        @Override
-        public void mark(final int readlimit) {
-            // record that `mark` was called
-            this.markcount++;
-            this.readlimit = readlimit;
-
-            // invoke on super
-            super.mark(readlimit);
-        }
-    }
+	@Test
+	public void resetThrowsExceptionWhenUnderylingSupports() throws IOException {
+		// test wrapping an underlying stream which supports marking
+		try (final MarkShieldInputStream msis = new MarkShieldInputStream(new NullInputStream(64, true, false))) {
+			assertThrows(UnsupportedOperationException.class, () -> msis.reset());
+		}
+	}
 }
