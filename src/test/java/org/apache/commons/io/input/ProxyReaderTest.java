@@ -28,42 +28,44 @@ import org.junit.jupiter.api.Test;
  */
 public class ProxyReaderTest {
 
-    @Test
-    public void testNullCharArray() throws Exception {
+	@Test
+	public void testNullCharArray() throws Exception {
 
-        final ProxyReader proxy = new ProxyReaderImpl(new CustomNullReader(0));
-        proxy.read((char[])null);
-        proxy.read(null, 0, 0);
-        proxy.close();
-    }
+		final ProxyReader proxy = new ProxyReaderImpl(new CustomNullReader(0));
+		proxy.read((char[]) null);
+		proxy.read(null, 0, 0);
+		proxy.close();
+	}
 
-    @Test
-    public void testNullCharBuffer() throws Exception {
+	@Test
+	public void testNullCharBuffer() throws Exception {
 
-        final ProxyReader proxy = new ProxyReaderImpl(new CustomNullReader(0));
-        proxy.read((CharBuffer)null);
-        proxy.close();
-    }
+		final ProxyReader proxy = new ProxyReaderImpl(new CustomNullReader(0));
+		proxy.read((CharBuffer) null);
+		proxy.close();
+	}
 
-    /** ProxyReader implementation */
-    private static class ProxyReaderImpl extends ProxyReader {
-        ProxyReaderImpl(final Reader proxy) {
-            super(proxy);
-        }
-    }
+	/** ProxyReader implementation */
+	private static class ProxyReaderImpl extends ProxyReader {
+		ProxyReaderImpl(final Reader proxy) {
+			super(proxy);
+		}
+	}
 
-    /** Custom NullReader implementation */
-    private static class CustomNullReader extends NullReader {
-        CustomNullReader(final int len) {
-            super(len);
-        }
-        @Override
-        public int read(final char[] chars) throws IOException {
-            return chars == null ? 0 : super.read(chars);
-        }
-        @Override
-        public int read(final CharBuffer target) throws IOException {
-            return target == null ? 0 : super.read(target);
-        }
-    }
+	/** Custom NullReader implementation */
+	private static class CustomNullReader extends NullReader {
+		CustomNullReader(final int len) {
+			super(len);
+		}
+
+		@Override
+		public int read(final char[] chars) throws IOException {
+			return chars == null ? 0 : super.read(chars);
+		}
+
+		@Override
+		public int read(final CharBuffer target) throws IOException {
+			return target == null ? 0 : super.read(target);
+		}
+	}
 }

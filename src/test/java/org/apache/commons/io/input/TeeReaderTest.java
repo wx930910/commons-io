@@ -27,9 +27,9 @@ import java.io.IOException;
 import java.io.Reader;
 import java.io.StringReader;
 import java.io.StringWriter;
-import java.io.Writer;
 import java.nio.CharBuffer;
 
+import org.apache.commons.io.output.ProxyWriter;
 import org.apache.commons.io.output.StringBuilderWriter;
 import org.apache.commons.io.test.ThrowOnCloseReader;
 import org.apache.commons.io.test.ThrowOnCloseWriter;
@@ -39,144 +39,146 @@ import org.junit.jupiter.api.Test;
 /**
  * JUnit Test Case for {@link TeeReader}.
  */
-public class TeeReaderTest  {
+public class TeeReaderTest {
 
-    private StringBuilderWriter output;
+	private StringBuilderWriter output;
 
-    private Reader tee;
+	private Reader tee;
 
-    @BeforeEach
-    public void setUp() {
-        final Reader input = new CharSequenceReader("abc");
-        output = new StringBuilderWriter();
-        tee = new TeeReader(input, output);
-    }
+	@BeforeEach
+	public void setUp() {
+		final Reader input = new CharSequenceReader("abc");
+		output = new StringBuilderWriter();
+		tee = new TeeReader(input, output);
+	}
 
-    /**
-     * Tests that the main {@code Reader} is closed when closing the branch {@code Writer} throws an
-     * exception on {@link TeeReader#close()}, if specified to do so.
-     */
-    @Test
-    public void testCloseBranchIOException() throws Exception {
-        final StringReader goodR = mock(StringReader.class);
-        final Writer badW = new ThrowOnCloseWriter();
+	/**
+	 * Tests that the main {@code Reader} is closed when closing the branch
+	 * {@code Writer} throws an exception on {@link TeeReader#close()}, if specified
+	 * to do so.
+	 */
+	@Test
+	public void testCloseBranchIOException() throws Exception, IOException {
+		final StringReader goodR = mock(StringReader.class);
+		final ProxyWriter badW = ThrowOnCloseWriter.mockProxyWriter1();
 
-        final TeeReader nonClosingTr = new TeeReader(goodR, badW, false);
-        nonClosingTr.close();
-        verify(goodR).close();
+		final TeeReader nonClosingTr = new TeeReader(goodR, badW, false);
+		nonClosingTr.close();
+		verify(goodR).close();
 
-        final TeeReader closingTr = new TeeReader(goodR, badW, true);
-        try {
-            closingTr.close();
-            fail("Expected " + IOException.class.getName());
-        } catch (final IOException e) {
-            verify(goodR, times(2)).close();
-        }
-    }
+		final TeeReader closingTr = new TeeReader(goodR, badW, true);
+		try {
+			closingTr.close();
+			fail("Expected " + IOException.class.getName());
+		} catch (final IOException e) {
+			verify(goodR, times(2)).close();
+		}
+	}
 
-    /**
-     * Tests that the branch {@code Writer} is closed when closing the main {@code Reader} throws an
-     * exception on {@link TeeReader#close()}, if specified to do so.
-     */
-    @Test
-    public void testCloseMainIOException() throws IOException {
-        final Reader badR = new ThrowOnCloseReader();
-        final StringWriter goodW = mock(StringWriter.class);
+	/**
+	 * Tests that the branch {@code Writer} is closed when closing the main
+	 * {@code Reader} throws an exception on {@link TeeReader#close()}, if specified
+	 * to do so.
+	 */
+	@Test
+	public void testCloseMainIOException() throws IOException, IOException {
+		final ProxyReader badR = ThrowOnCloseReader.mockProxyReader1();
+		final StringWriter goodW = mock(StringWriter.class);
 
-        final TeeReader nonClosingTr = new TeeReader(badR, goodW, false);
-        try {
-            nonClosingTr.close();
-            fail("Expected " + IOException.class.getName());
-        } catch (final IOException e) {
-            verify(goodW, never()).close();
-        }
+		final TeeReader nonClosingTr = new TeeReader(badR, goodW, false);
+		try {
+			nonClosingTr.close();
+			fail("Expected " + IOException.class.getName());
+		} catch (final IOException e) {
+			verify(goodW, never()).close();
+		}
 
-        final TeeReader closingTr = new TeeReader(badR, goodW, true);
-        try {
-            closingTr.close();
-            fail("Expected " + IOException.class.getName());
-        } catch (final IOException e) {
-            //Assert.assertTrue(goodW.closed);
-            verify(goodW).close();
-        }
-    }
+		final TeeReader closingTr = new TeeReader(badR, goodW, true);
+		try {
+			closingTr.close();
+			fail("Expected " + IOException.class.getName());
+		} catch (final IOException e) {
+			// Assert.assertTrue(goodW.closed);
+			verify(goodW).close();
+		}
+	}
 
-    @Test
-    public void testMarkReset() throws Exception {
-        assertEquals('a', tee.read());
-        tee.mark(1);
-        assertEquals('b', tee.read());
-        tee.reset();
-        assertEquals('b', tee.read());
-        assertEquals('c', tee.read());
-        assertEquals(-1, tee.read());
-        assertEquals("abbc", output.toString());
-    }
+	@Test
+	public void testMarkReset() throws Exception {
+		assertEquals('a', tee.read());
+		tee.mark(1);
+		assertEquals('b', tee.read());
+		tee.reset();
+		assertEquals('b', tee.read());
+		assertEquals('c', tee.read());
+		assertEquals(-1, tee.read());
+		assertEquals("abbc", output.toString());
+	}
 
-    @Test
-    public void testReadEverything() throws Exception {
-        assertEquals('a', tee.read());
-        assertEquals('b', tee.read());
-        assertEquals('c', tee.read());
-        assertEquals(-1, tee.read());
-        assertEquals("abc", output.toString());
-    }
+	@Test
+	public void testReadEverything() throws Exception {
+		assertEquals('a', tee.read());
+		assertEquals('b', tee.read());
+		assertEquals('c', tee.read());
+		assertEquals(-1, tee.read());
+		assertEquals("abc", output.toString());
+	}
 
-    @Test
-    public void testReadNothing() {
-        assertEquals("", output.toString());
-    }
+	@Test
+	public void testReadNothing() {
+		assertEquals("", output.toString());
+	}
 
-    @Test
-    public void testReadOneChar() throws Exception {
-        assertEquals('a', tee.read());
-        assertEquals("a", output.toString());
-    }
+	@Test
+	public void testReadOneChar() throws Exception {
+		assertEquals('a', tee.read());
+		assertEquals("a", output.toString());
+	}
 
-    @Test
-    public void testReadToArray() throws Exception {
-        final char[] buffer = new char[8];
-        assertEquals(3, tee.read(buffer));
-        assertEquals('a', buffer[0]);
-        assertEquals('b', buffer[1]);
-        assertEquals('c', buffer[2]);
-        assertEquals(-1, tee.read(buffer));
-        assertEquals("abc", output.toString());
-    }
+	@Test
+	public void testReadToArray() throws Exception {
+		final char[] buffer = new char[8];
+		assertEquals(3, tee.read(buffer));
+		assertEquals('a', buffer[0]);
+		assertEquals('b', buffer[1]);
+		assertEquals('c', buffer[2]);
+		assertEquals(-1, tee.read(buffer));
+		assertEquals("abc", output.toString());
+	}
 
-    @Test
-    public void testReadToArrayWithOffset() throws Exception {
-        final char[] buffer = new char[8];
-        assertEquals(3, tee.read(buffer, 4, 4));
-        assertEquals('a', buffer[4]);
-        assertEquals('b', buffer[5]);
-        assertEquals('c', buffer[6]);
-        assertEquals(-1, tee.read(buffer, 4, 4));
-        assertEquals("abc", output.toString());
-    }
+	@Test
+	public void testReadToArrayWithOffset() throws Exception {
+		final char[] buffer = new char[8];
+		assertEquals(3, tee.read(buffer, 4, 4));
+		assertEquals('a', buffer[4]);
+		assertEquals('b', buffer[5]);
+		assertEquals('c', buffer[6]);
+		assertEquals(-1, tee.read(buffer, 4, 4));
+		assertEquals("abc", output.toString());
+	}
 
-    @Test
-    public void testReadToCharBuffer() throws Exception {
-        final CharBuffer buffer = CharBuffer.allocate(8);
-        buffer.position(1);
-        assertEquals(3, tee.read(buffer));
-        assertEquals(4, buffer.position());
-        buffer.flip();
-        buffer.position(1);
-        assertEquals('a', buffer.charAt(0));
-        assertEquals('b', buffer.charAt(1));
-        assertEquals('c', buffer.charAt(2));
-        assertEquals(-1, tee.read(buffer));
-        assertEquals("abc", output.toString());
-    }
+	@Test
+	public void testReadToCharBuffer() throws Exception {
+		final CharBuffer buffer = CharBuffer.allocate(8);
+		buffer.position(1);
+		assertEquals(3, tee.read(buffer));
+		assertEquals(4, buffer.position());
+		buffer.flip();
+		buffer.position(1);
+		assertEquals('a', buffer.charAt(0));
+		assertEquals('b', buffer.charAt(1));
+		assertEquals('c', buffer.charAt(2));
+		assertEquals(-1, tee.read(buffer));
+		assertEquals("abc", output.toString());
+	}
 
-    @Test
-    public void testSkip() throws Exception {
-        assertEquals('a', tee.read());
-        assertEquals(1, tee.skip(1));
-        assertEquals('c', tee.read());
-        assertEquals(-1, tee.read());
-        assertEquals("ac", output.toString());
-    }
+	@Test
+	public void testSkip() throws Exception {
+		assertEquals('a', tee.read());
+		assertEquals(1, tee.skip(1));
+		assertEquals('c', tee.read());
+		assertEquals(-1, tee.read());
+		assertEquals("ac", output.toString());
+	}
 
 }
