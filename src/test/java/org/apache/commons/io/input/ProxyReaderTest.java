@@ -16,11 +16,15 @@
  */
 package org.apache.commons.io.input;
 
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.withSettings;
+
 import java.io.IOException;
 import java.io.Reader;
 import java.nio.CharBuffer;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 
 /**
  * Test {@link ProxyReader}.
@@ -28,42 +32,43 @@ import org.junit.jupiter.api.Test;
  */
 public class ProxyReaderTest {
 
-    @Test
-    public void testNullCharArray() throws Exception {
+	public static ProxyReader mockProxyReader1(final Reader proxy) {
+		ProxyReader mockInstance = mock(ProxyReader.class,
+				withSettings().useConstructor(proxy).defaultAnswer(Mockito.CALLS_REAL_METHODS));
+		return mockInstance;
+	}
 
-        final ProxyReader proxy = new ProxyReaderImpl(new CustomNullReader(0));
-        proxy.read((char[])null);
-        proxy.read(null, 0, 0);
-        proxy.close();
-    }
+	@Test
+	public void testNullCharArray() throws Exception {
 
-    @Test
-    public void testNullCharBuffer() throws Exception {
+		final ProxyReader proxy = ProxyReaderTest.mockProxyReader1(new CustomNullReader(0));
+		proxy.read((char[]) null);
+		proxy.read(null, 0, 0);
+		proxy.close();
+	}
 
-        final ProxyReader proxy = new ProxyReaderImpl(new CustomNullReader(0));
-        proxy.read((CharBuffer)null);
-        proxy.close();
-    }
+	@Test
+	public void testNullCharBuffer() throws Exception {
 
-    /** ProxyReader implementation */
-    private static class ProxyReaderImpl extends ProxyReader {
-        ProxyReaderImpl(final Reader proxy) {
-            super(proxy);
-        }
-    }
+		final ProxyReader proxy = ProxyReaderTest.mockProxyReader1(new CustomNullReader(0));
+		proxy.read((CharBuffer) null);
+		proxy.close();
+	}
 
-    /** Custom NullReader implementation */
-    private static class CustomNullReader extends NullReader {
-        CustomNullReader(final int len) {
-            super(len);
-        }
-        @Override
-        public int read(final char[] chars) throws IOException {
-            return chars == null ? 0 : super.read(chars);
-        }
-        @Override
-        public int read(final CharBuffer target) throws IOException {
-            return target == null ? 0 : super.read(target);
-        }
-    }
+	/** Custom NullReader implementation */
+	private static class CustomNullReader extends NullReader {
+		CustomNullReader(final int len) {
+			super(len);
+		}
+
+		@Override
+		public int read(final char[] chars) throws IOException {
+			return chars == null ? 0 : super.read(chars);
+		}
+
+		@Override
+		public int read(final CharBuffer target) throws IOException {
+			return target == null ? 0 : super.read(target);
+		}
+	}
 }
